@@ -1,17 +1,17 @@
-#User Management System with Invitation Code
+# User Management System with Invitation Code
 
-##Overview
+## Overview
 
 This Go package provides functionalities for user management, including user registration, login, and admin management. It includes HTTP handlers to handle user registration, login, admin registration, and invitation code generation.
 
-##Features
+## Features
 
 User registration: Allows users to register with a unique username and password.
 User login: Enables users to authenticate themselves with their registered credentials.
 Admin registration: Provides functionality for registering admin users with special privileges.
 Invitation code generation: Generates unique invitation codes for user registration.
 
-##Installation
+## Installation
 
 To use this package, you need to have Go installed on your system. You can install the package using the go get command:
 
@@ -19,7 +19,7 @@ To use this package, you need to have Go installed on your system. You can insta
 go get github.com/your-username/your-package-name
 Replace github.com/your-username/your-package-name with the actual path to your package.
 ```
-##Usage
+## Usage
 
 Once installed, you can import the package in your Go code and use its functionalities. Below is an example of how to use the package to set up a user management server:
 
@@ -57,7 +57,7 @@ func main() {
 ```
 Make sure to replace SetupDatabase, RegisterHandler, LoginHandler, GenerateInvitationHandler, RegisterAdminHandler, invitePageHandler, and StaticFileHandler with your actual implementations.
 
-##Endpoints
+## Endpoints
 
 - /register: Endpoint for user registration. Expects a POST request with JSON containing username, password, and invitation_code fields.
 - /login: Endpoint for user login. Expects a POST request with JSON containing username and password fields.
