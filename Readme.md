@@ -11,13 +11,37 @@ User login: Enables users to authenticate themselves with their registered crede
 Admin registration: Provides functionality for registering admin users with special privileges.
 Invitation code generation: Generates unique invitation codes for user registration.
 
+1) Backend Server:
+
+- Developed in Go (Golang).
+- Handles HTTP requests and communicates with the PostgreSQL database.
+- Provides endpoints for user registration, login, admin registration, and invitation code generation.
+- Utilizes bcrypt for password hashing and JSON Web Tokens (JWT) for authentication.
+
+2) Frontend Interface:
+
+- Developed using HTML, CSS, and JavaScript.
+- Provides a user-friendly interface for user registration and login.
+- Separate page for generating invitation codes.
+
+
+
 ## Installation
 
 To use this package, you need to have Go installed on your system. You can install the package using the go get command:
 
 ```bash
-go get github.com/your-username/your-package-name
-Replace github.com/your-username/your-package-name with the actual path to your package.
+git clone https://github.com/vinaychhabra/goUserManagement.git
+```
+open your docker
+
+run script:
+```bash 
+./setup_postgres.sh
+```
+then run go code
+```bash
+go run main.go
 ```
 ## Usage
 
@@ -65,3 +89,23 @@ Make sure to replace SetupDatabase, RegisterHandler, LoginHandler, GenerateInvit
 - /register-admin: Endpoint for registering an admin user. Expects a POST request with JSON containing username and password fields.
 - /invite: Endpoint for serving the invite page .
 - /: Endpoint for serving static files (frontend). This serves the main index.html file.
+
+## Folder Structure
+
+- frontend/:
+Contains the HTML, CSS, and JavaScript files for the frontend interface.
+`index.html`: User registration and login interface.
+invite/: Folder with index.html for invitation code generation.
+- database_script/:
+Contains the Bash script for setting up the PostgreSQL database container.
+Creates necessary tables for users, invitations, and admins.
+
+- main.go:
+Go source code for the backend server.
+Includes main server logic, database interaction, and HTTP request handlers.
+
+- go.mod:
+Go module file for managing dependencies.
+
+- README.md:
+Markdown file containing project documentation and setup instructions.
