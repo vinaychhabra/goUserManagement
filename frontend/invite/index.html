@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Generate Invite</title>
+    <style>
+        /* Global styles */
+        * {
+            padding: 0;
+            margin: 0;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f4f4f4;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+
+        h1 {
+            text-align: center;
+        }
+
+        header {
+            background-color: #017bfe;
+            height: 2rem;
+            color: #fff;
+            padding: 1rem;
+        }
+
+        section {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            gap: 2rem;
+            padding: 3rem;
+        }
+
+        /* Form styles */
+        form {
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            max-width: 300px;
+            width: 100%;
+        }
+
+        form h2 {
+            margin-top: 0;
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+        }
+
+        input[type="text"],
+        input[type="password"] {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 20px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        #copyButton{
+            background-color: #007bff;
+    color: #fff;
+    padding: 10px 8px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    margin-top: -21px;
+        }
+        button[type="submit"]{
+            background-color: #007bff;
+            color: #fff;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            width: 100%;
+        }
+
+        button[type="submit"]:hover {
+            background-color: #0056b3;
+        }
+
+        .success {
+            background-color: green;
+        }
+
+        .error {
+            background-color: red;
+        }
+
+        .message {
+            margin-top: 10px;
+            text-align: center;
+            color: #fff;
+            border-radius: 5px;
+            padding: 5px;
+        }
+
+        /* Styling for invite box */
+        .invitecode-elements {
+            display: flex;
+            flex-direction: row;
+            align-items: center;
+            gap: 10px;
+        }
+
+      
+    </style>
+</head>
+
+<body>
+    <header>
+        <h1>Generate Invite</h1>
+    </header>
+
+    <section>
+        <form id="inviteForm">
+            <h2>Register</h2>
+            <label for="username">Username:</label>
+            <input type="text" id="username" name="username" required>
+            <br>
+            <label for="password">Password:</label>
+            <input type="password" id="password" name="password" required>
+            <br>
+            <!-- Box to display invitation code -->
+            
+            <div id="inviteBox" style="display: none;">
+                <label for="inviteCode">Invitation Code:</label>
+                <div class="invitecode-elements">
+                    <input type="text" id="inviteCode" name="inviteCode" readonly>
+                    <button type="button" id="copyButton">Copy</button>
+                </div>
+            </div>
+            <button type="submit">Generate Invite</button>
+            <div id="inviteMessage" class="message"></div>
+            <div id="inviteSuccessMessage" class="message"></div>
+        </form>
+
+    </section>
+    <script>
+        // Function to copy the invitation code
+        function copyInviteCode() {
+            var inviteCodeElement = document.getElementById('inviteCode');
+            inviteCodeElement.select();
+            navigator.clipboard.writeText(inviteCodeElement.value)
+                .then(() => {
+                    var copyButton = document.getElementById('copyButton');
+                    copyButton.textContent = 'Copied';
+                    setTimeout(() => {
+                        copyButton.textContent = 'Copy';
+                    }, 3000);
+                })
+        }
+
+        // Event listener for the copy button
+        document.getElementById('copyButton').addEventListener('click', function (event) {
+            copyInviteCode();
+        });
+
+        // Handle registration form submission
+        document.getElementById('inviteForm').addEventListener('submit', function (event) {
+            event.preventDefault();
+            var formData = new FormData(this);
+            var jsonData = {};
+            formData.forEach(function (value, key) {
+                jsonData[key] = value;
+            });
+            fetch('/generate-invitation', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(jsonData)
+            })
+                .then(response => response.json()) // Parse response as JSON
+                .then(data => {
+                    const regMessageElement = document.getElementById('inviteMessage');
+
+                    // Set the message and style based on the response data
+                    if (data.hasOwnProperty('invitation_code')) {
+                        regMessageElement.textContent = "Invitation code generated successfully";
+                        regMessageElement.classList.add('success');
+
+                        // Display invite box and set invitation code
+                        document.getElementById('inviteBox').style.display = 'block';
+                        document.getElementById('inviteCode').value = data.invitation_code;
+                    } else {
+                        regMessageElement.textContent = data;
+                        regMessageElement.classList.add('error');
+                    }
+
+                    // Remove the error/success class and clear the message after 5 seconds
+                    setTimeout(() => {
+                        regMessageElement.classList.remove('error', 'success');
+                        regMessageElement.textContent = "";
+                    }, 5000);
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                });
+        });
+    </script>
+
+
+</body>
+
+</html>
