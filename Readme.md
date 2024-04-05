@@ -42,7 +42,7 @@ Then run the Go code:
 go mod tidy
 go run main.go
 ```
-- `go mod tidy` is used to ensure that the `go.mod` file reflects the correct dependencies and versions.
+`go mod tidy` is used to ensure that the `go.mod` file reflects the correct dependencies and versions.
 
 ## Usage
 
