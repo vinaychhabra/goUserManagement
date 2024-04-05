@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard</title>
+    <style>
+        /* Global styles */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            padding: 20px;
+        }
+
+        header {
+            background-color: #017bfe;
+            color: #fff;
+            padding: 10px;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        section {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #fff;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        p {
+            margin-bottom: 10px;
+        }
+
+        /* Table styles */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+
+        th,
+        td {
+            padding: 10px;
+            border-bottom: 1px solid #ccc;
+            text-align: left;
+        }
+
+        th {
+            background-color: #f4f4f4;
+        }
+
+        /* Logout button */
+        .logout-btn {
+            background-color: #007bff;
+            color: #fff;
+            padding: 8px 16px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-top: 20px;
+        }
+
+        .logout-btn:hover {
+            background-color: #0056b3;
+        }
+    </style>
+</head>
+
+<body>
+    <header>
+        <h1>Welcome, <span id="username"></span>!</h1>
+    </header>
+
+    <section>
+        <h2>User Information</h2>
+        <h1>Your Session is Valid For, <span id="cookieExpireTime"></span>!</h1>
+
+        <button id="logoutBtn" class="logout-btn">Logout</button>
+      
+        <script>
+             document.addEventListener('DOMContentLoaded', function() {
+    document.getElementById('logoutBtn').addEventListener('click', function() {
+        fetch('/logout', {
+                    method: 'POST',
+                    credentials: 'same-origin' // Include cookies in the request
+                })
+                .then(response => {
+                    if (response.ok) {
+                        // Redirect to login page after successful logout
+                        window.location.href = '/'; // Change to your login page URL
+                    } else {
+                        console.error('Logout failed');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                });
+    });
+        });
+        
+             document.getElementById('cookieExpireTime').textContent = getCookieExpireTime('username');
+
+             function getCookie(name) {
+                const cookieValue = document.cookie
+                .split('; ')
+                .find(row => row.startsWith('session_token='))
+                .split('=')[1];
+
+            // Decode the JWT token
+            const tokenPayload = JSON.parse(atob(cookieValue.split('.')[1]));
+
+            // Extract and return the username from the token payload
+            return tokenPayload.username;
+        }
+        document.getElementById('username').textContent = getCookie('username');
+
+            function getCookieExpireTime(name) {
+            const cookieValue = document.cookie
+            .split('; ')
+            .find(row => row.startsWith('session_token='))
+            .split('=')[1];
+
+            // Decode the JWT token
+            const tokenPayload = JSON.parse(atob(cookieValue.split('.')[1]));
+
+            // Extract and return the username from the token payload
+
+            var timestamp = tokenPayload.exp * 1000;
+
+            // Create a new Date object with the timestamp
+            var date = new Date(timestamp);
+
+            // Format the date to a readable format (e.g., "YYYY-MM-DD HH:mm:ss")
+            var formattedDate = date.toLocaleString();
+
+            return formattedDate;
+            }
+       
+        </script>
+    </section>
+</body>
+
+</html>

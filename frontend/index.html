@@ -181,44 +181,40 @@
         });
 
         // Handle login form submission
-        document.getElementById('loginForm').addEventListener('submit', function (event) {
-            event.preventDefault();
-            var formData = new FormData(this);
-            var jsonData = {};
-            formData.forEach(function (value, key) {
-                jsonData[key] = value;
-            });
-            fetch('/login', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(jsonData)
-            })
-                .then(response => response.text())
-                .then(data => {
-                    const loginMessageElement = document.getElementById('loginMessage');
-
-                    // Set the message and style based on the response data
-                    if (data !== "Logged in successfully") {
-                        loginMessageElement.textContent = data;
-                        loginMessageElement.classList.add('error');
-                    } else {
-                        loginMessageElement.textContent = "Logged in successfully";
-                        loginMessageElement.classList.add('success');
-                    }
-
-                    // Remove the error/success class and clear the message after 5 seconds
-                    setTimeout(() => {
-                        loginMessageElement.classList.remove('error', 'success');
-                        loginMessageElement.textContent = "";
-                    }, 5000);
-
-                })
-                .catch(error => {
-                    console.error('Error:', error);
-                });
+document.getElementById('loginForm').addEventListener('submit', function (event) {
+    event.preventDefault();
+    var formData = new FormData(this);
+    var jsonData = {};
+    formData.forEach(function (value, key) {
+        jsonData[key] = value;
+    });
+    fetch('/login', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(jsonData)
+    })
+        .then(response => response.text())
+        .then(data => {
+            const loginMessageElement = document.getElementById('loginMessage');
+                // Set the message and style based on the response data
+                if (data.includes("Logged in successfully")) {
+                    loginMessageElement.textContent = "Logged in successfully";
+                    loginMessageElement.classList.add('success');
+                    window.location.href = '/dashboard';
+                } else {
+                    loginMessageElement.textContent = data;
+                    loginMessageElement.classList.add('error');
+                }
+                // Remove the error/success class and clear the message after 5 seconds
+                
+        })
+        .catch(error => {
+            console.error('Error:', error);
         });
+});
+
     </script>
 
 </body>

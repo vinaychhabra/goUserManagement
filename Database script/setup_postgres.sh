@@ -1,10 +1,11 @@
 #!/bin/bash
 
 # Configuration variables
-CONTAINER_NAME="UserManagementDB"
+CONTAINER_NAME="UserManagementDB" 
 POSTGRES_USER="root"
 POSTGRES_PASSWORD="pass123456"
 POSTGRES_DB="users"
+#these credentials you can change
 TABLE_USERS_SQL="CREATE TABLE IF NOT EXISTS users (id SERIAL PRIMARY KEY, username VARCHAR(255) UNIQUE NOT NULL, password_hash CHAR(60) NOT NULL);"
 TABLE_INVITATIONS_SQL="CREATE TABLE IF NOT EXISTS invitations (
     id SERIAL PRIMARY KEY,

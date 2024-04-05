@@ -12,6 +12,9 @@ import (
 
 	_ "github.com/lib/pq"
 	"golang.org/x/crypto/bcrypt"
+
+	"github.com/dgrijalva/jwt-go"
+	"golang.org/x/time/rate"
 )
 
 // Define database connection details
@@ -30,18 +33,20 @@ const (
 	adminsTable      = "admins"
 )
 
-// User struct represents a user in the system
-type User struct {
-	Username string `json:"username"`
-	Password string `json:"password"`
-}
-
-// Invitation struct represents an invitation code
+// Invitation struct represents an invitation code //B
 type Invitation struct {
 	ID       int       `json:"id"`
 	Code     string    `json:"code"`
 	Used     bool      `json:"used"`
 	IssuedAt time.Time `json:"issued_at"`
+}
+
+var jwtKey = []byte("your_secret_key")
+
+// User struct represents a user in the system
+type User struct {
+	Username string `json:"username"`
+	Password string `json:"password"`
 }
 
 // Admin struct represents an admin user
@@ -62,6 +67,8 @@ func SetupDatabase() *sql.DB {
 	return db
 }
 
+var limiter = rate.NewLimiter(rate.Limit(1), 5) // Allow 1 request per 5 seconds
+
 // RegisterHandler handles user registration
 func RegisterHandler(db *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -70,7 +77,7 @@ func RegisterHandler(db *sql.DB) http.HandlerFunc {
 			return
 		}
 
-		// Parse the request body to extract user details and invitation code
+		// Parse request body to extract user details
 		var requestBody struct {
 			Username       string `json:"username"`
 			Password       string `json:"password"`
@@ -81,7 +88,7 @@ func RegisterHandler(db *sql.DB) http.HandlerFunc {
 			return
 		}
 
-		// Extract user details and invitation code from the parsed request body
+		// Extract user details from the request body
 		username := requestBody.Username
 		password := requestBody.Password
 		invitationCode := requestBody.InvitationCode
@@ -101,7 +108,7 @@ func RegisterHandler(db *sql.DB) http.HandlerFunc {
 			return
 		}
 
-		// Check if the username already exists in the database
+		// Check if the username already exists
 		exists, err := isUsernameExists(db, username)
 		if err != nil {
 			http.Error(w, "Failed to check username existence", http.StatusInternalServerError)
@@ -119,14 +126,14 @@ func RegisterHandler(db *sql.DB) http.HandlerFunc {
 			return
 		}
 
-		// Store user details in the database
+		// Save user details to the database
 		_, err = db.Exec("INSERT INTO users (username, password_hash) VALUES ($1, $2)", username, string(hashedPassword))
 		if err != nil {
 			http.Error(w, "Failed to save user", http.StatusInternalServerError)
 			return
 		}
 
-		// Mark the invitation code as used
+		// Mark invitation code as used
 		err = markInvitationCodeAsUsed(db, invitationCode)
 		if err != nil {
 			log.Println("Failed to mark invitation code as used:", err)
@@ -137,7 +144,7 @@ func RegisterHandler(db *sql.DB) http.HandlerFunc {
 	}
 }
 
-// isUsernameExists checks if the username already exists in the database
+// isUsernameExists checks if the username already exists in the database   //C
 func isUsernameExists(db *sql.DB, username string) (bool, error) {
 	var count int
 	err := db.QueryRow("SELECT COUNT(*) FROM users WHERE username = $1", username).Scan(&count)
@@ -147,7 +154,7 @@ func isUsernameExists(db *sql.DB, username string) (bool, error) {
 	return count > 0, nil
 }
 
-// validateInvitationCode checks if the provided invitation code is valid and unused
+// validateInvitationCode checks if the provided invitation code is valid and unused //C
 func validateInvitationCode(db *sql.DB, code string) (bool, error) {
 	var used bool
 	err := db.QueryRow("SELECT used FROM invitations WHERE code = $1", code).Scan(&used)
@@ -166,11 +173,62 @@ func markInvitationCodeAsUsed(db *sql.DB, code string) error {
 	return err
 }
 
-// LoginHandler handles user login
+func GenerateJWT(user User) (string, error) {
+	claims := jwt.MapClaims{
+		"username": user.Username,
+		"exp":      time.Now().Add(time.Minute * 15).Unix(),
+	}
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	return token.SignedString(jwtKey)
+}
+func AuthMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Retrieve session token from the request cookies
+		cookie, err := r.Cookie("session_token")
+		if err != nil || cookie.Value == "" {
+			http.HandleFunc("/", StaticFileHandler)
+			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			return
+		}
+
+		// Validate session token
+		if !validateSessionToken(cookie.Value) {
+			http.HandleFunc("/", StaticFileHandler)
+			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			return
+		}
+
+		// If token is valid, proceed to the next handler
+		next.ServeHTTP(w, r)
+	})
+}
+func validateSessionToken(tokenString string) bool {
+	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
+		// Check if the signing method is HMAC
+		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
+		}
+		// Return the secret key used for signing
+		return jwtKey, nil
+	})
+	if err != nil || !token.Valid {
+		return false
+	}
+	return true
+}
+
+// LoginHandler handles user login functionality
 func LoginHandler(db *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		// Check if the request method is POST
 		if r.Method != "POST" {
 			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+
+		ctx := r.Context()
+		if err := limiter.Wait(ctx); err != nil {
+			http.Error(w, "Rate limit exceeded", http.StatusTooManyRequests)
 			return
 		}
 
@@ -180,8 +238,9 @@ func LoginHandler(db *sql.DB) http.HandlerFunc {
 			http.Error(w, "Failed to decode request body", http.StatusBadRequest)
 			return
 		}
-		log.Println(user)
-		// Retrieve user details from the database
+		log.Println("Received user:", user)
+
+		// Retrieve the stored password hash for the given username from the database
 		var storedPasswordHash string
 		err := db.QueryRow("SELECT password_hash FROM users WHERE username = $1", user.Username).Scan(&storedPasswordHash)
 		if err != nil {
@@ -194,25 +253,73 @@ func LoginHandler(db *sql.DB) http.HandlerFunc {
 			return
 		}
 
-		// Log the stored password hash for debugging
-		log.Println(user)
-		log.Println("Stored password hash:", storedPasswordHash)
+		// Log the stored password hash for debugging purposes
+		log.Println("Stored password hash for user", user.Username, ":", storedPasswordHash)
 
-		// Compare hashed password with the provided password
+		// Compare the stored hashed password with the provided password
 		err = bcrypt.CompareHashAndPassword([]byte(storedPasswordHash), []byte(user.Password))
-		log.Println("Stored password hash:", (user.Password))
 		if err != nil {
 			http.Error(w, "Invalid username or password", http.StatusUnauthorized)
-			log.Println("Invalid username or password:", err)
+			log.Println("Invalid username or password for user", user.Username, ":", err)
 			return
 		}
 
-		// Return success message if login is successful
-		fmt.Fprintf(w, "Logged in successfully")
+		// Generate JWT token
+		tokenString, err := GenerateJWT(user)
+		if err != nil {
+			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+			return
+		}
+
+		// Set JWT token as cookie
+		expiration := time.Now().Add(24 * time.Hour)
+		cookie := http.Cookie{Name: "session_token", Value: tokenString, Expires: expiration}
+		http.SetCookie(w, &cookie)
+
+		// Respond with a success message (or a JSON response)
+		w.WriteHeader(http.StatusOK)
+		fmt.Fprintf(w, "Logged in successfully. Welcome, %s!", user.Username)
 	}
 }
+func generateInvitationCode() string {
+	// Define the characters that can be used in the invitation code
+	const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"
 
-// GenerateInvitationHandler generates a new invitation code
+	// Initialize a random seed using the current time
+	rand.Seed(time.Now().UnixNano())
+
+	// Initialize an empty string to store the generated code
+	code := make([]byte, 10)
+
+	// Generate a random character from the chars string and append it to the code
+	for i := range code {
+		code[i] = chars[rand.Intn(len(chars))]
+	}
+
+	// Return the generated invitation code as a string
+	return string(code)
+}
+func dashboardFileHandler(w http.ResponseWriter, r *http.Request) {
+	filePath := filepath.Join("frontend", "dashboard.html")
+	http.ServeFile(w, r, filePath)
+}
+
+// Protected dashboard endpoint with session validation middleware
+
+func logoutHandler(w http.ResponseWriter, r *http.Request) {
+	// Clear the session token cookie
+	cookie := http.Cookie{
+		Name:     "session_token",
+		Value:    "",
+		Expires:  time.Now().AddDate(0, 0, -1), // Expire immediately
+		HttpOnly: true,
+		Path:     "/",
+	}
+	http.SetCookie(w, &cookie)
+	fmt.Fprintf(w, "Logged out successfully")
+}
+
+// this Function will generate a new invitation code
 func GenerateInvitationHandler(db *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		// Parse the request body to extract admin credentials
@@ -254,7 +361,7 @@ func storeInvitationCode(db *sql.DB, invitationCode string) error {
 	return err
 }
 
-// verifyAdminCredentials verifies the provided admin credentials against the values stored in the database
+// verifies the provided admin credentials against the values stored in the database
 func verifyAdminCredentials(db *sql.DB, admin Admin) (bool, error) {
 	var storedPasswordHash string
 	err := db.QueryRow("SELECT password_hash FROM admins WHERE username = $1", admin.Username).Scan(&storedPasswordHash)
@@ -273,23 +380,16 @@ func verifyAdminCredentials(db *sql.DB, admin Admin) (bool, error) {
 
 	return true, nil // Admin credentials are valid
 }
-func generateInvitationCode() string {
-	// Define the characters that can be used in the invitation code
-	const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"
 
-	// Initialize a random seed using the current time
-	rand.Seed(time.Now().UnixNano())
+func StaticFileHandler(w http.ResponseWriter, r *http.Request) {
+	// Construct the absolute file path to index.html
+	indexPath := filepath.Join("frontend", "index.html")
 
-	// Initialize an empty string to store the generated code
-	code := make([]byte, 10)
-
-	// Generate a random character from the chars string and append it to the code
-	for i := range code {
-		code[i] = chars[rand.Intn(len(chars))]
-	}
-
-	// Return the generated invitation code as a string
-	return string(code)
+	// Serve the file
+	http.ServeFile(w, r, indexPath)
+}
+func invitePageHandler(w http.ResponseWriter, r *http.Request) {
+	http.ServeFile(w, r, "frontend/invite/index.html")
 }
 
 // RegisterAdminHandler handles registration of admin users
@@ -338,16 +438,6 @@ func RegisterAdminHandler(db *sql.DB) http.HandlerFunc {
 	}
 }
 
-func StaticFileHandler(w http.ResponseWriter, r *http.Request) {
-	// Construct the absolute file path to index.html
-	indexPath := filepath.Join("frontend", "index.html")
-
-	// Serve the file
-	http.ServeFile(w, r, indexPath)
-}
-func invitePageHandler(w http.ResponseWriter, r *http.Request) {
-	http.ServeFile(w, r, "frontend/invite/index.html")
-}
 func main() {
 	db := SetupDatabase()
 	defer db.Close()
@@ -357,7 +447,10 @@ func main() {
 	http.HandleFunc("/generate-invitation", GenerateInvitationHandler(db))
 	http.HandleFunc("/register-admin", RegisterAdminHandler(db))
 	http.HandleFunc("/invite", invitePageHandler)
+	http.HandleFunc("/logout", logoutHandler)
+	http.Handle("/dashboard", AuthMiddleware(http.HandlerFunc(dashboardFileHandler)))
 	http.HandleFunc("/", StaticFileHandler)
+
 	log.Println("Server started on :8081")
 	log.Fatal(http.ListenAndServe(":8081", nil))
 }
