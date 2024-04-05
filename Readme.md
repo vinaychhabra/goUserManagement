@@ -98,7 +98,7 @@ Contains the HTML, CSS, and JavaScript files for the frontend interface.
 	- `index.html`: User registration and login interface.
 	- invite/: Folder with index.html for invitation code generation.
 	- `dashboard.html`:User will be redirected to this page after login.
-- database_script/:
+- Database script/setup_postgres.sh:
 Contains the Bash script for setting up the PostgreSQL database container.
 Creates necessary tables for users, invitations, and admins.
 
