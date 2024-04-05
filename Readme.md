@@ -6,10 +6,10 @@ This Go package provides functionalities for user management, including user reg
 
 ## Features
 
-User registration: Allows users to register with a unique username and password.
-User login: Enables users to authenticate themselves with their registered credentials.
-Admin registration: Provides functionality for registering admin users with special privileges.
-Invitation code generation: Generates unique invitation codes for user registration.
+- **User registration:** Allows users to register with a unique username and password.
+- **User login:** Enables users to authenticate themselves with their registered credentials.
+- **Admin registration:** Provides functionality for registering admin users with special privileges.
+- **Invitation code generation:** Generates unique invitation codes for user registration.
 
 1) Backend Server:
 
@@ -33,16 +33,17 @@ To use this package, you need to have Go installed on your system. You can insta
 ```bash
 git clone https://github.com/vinaychhabra/goUserManagement.git
 ```
-open your docker
-
-run script:
+Open your Docker and run the script:
 ```bash 
 ./setup_postgres.sh
 ```
-then run go code
+Then run the Go code:
 ```bash
+go mod tidy
 go run main.go
 ```
+- `go mod tidy` is used to ensure that the `go.mod` file reflects the correct dependencies and versions.
+
 ## Usage
 
 Once installed, you can import the package in your Go code and use its functionalities. Below is an example of how to use the package to set up a user management server:
@@ -94,8 +95,9 @@ Make sure to replace SetupDatabase, RegisterHandler, LoginHandler, GenerateInvit
 
 - frontend/:
 Contains the HTML, CSS, and JavaScript files for the frontend interface.
-`index.html`: User registration and login interface.
-invite/: Folder with index.html for invitation code generation.
+	- `index.html`: User registration and login interface.
+	- invite/: Folder with index.html for invitation code generation.
+	- `dashboard.html`:User will be redirected to this page after login.
 - database_script/:
 Contains the Bash script for setting up the PostgreSQL database container.
 Creates necessary tables for users, invitations, and admins.
